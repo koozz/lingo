@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#090d19">
+  <meta name="description" content="Daily Dutch language practice">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <title>lingo — Dutch language practice</title>
+  <link rel="stylesheet" href="lingo.css">
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand"><span class="logo">l</span><span>lingo</span><small>learn daily</small><span class="language-divider" aria-hidden="true">&nbsp;&nbsp;·&nbsp;&nbsp;</span><small id="languageLabel">Italian</small></div>
+      <button id="settingsButton" class="icon-button" type="button" aria-label="Open settings" aria-expanded="false">⚙</button>
+      <div id="settings" class="popover" hidden>
+        <div class="popover-title">Settings</div>
+        <label>Language<select id="languageSelect"></select></label>
+        <label>Question types
+          <select id="questionMode">
+            <option value="mixed">Mixed</option><option value="choice">Multiple choice</option>
+            <option value="typing">Typing</option>
+          </select>
+        </label>
+        <label>Typing chance <output id="typingValue">30%</output><input id="typingProbability" type="range" min="0" max="100" step="5" value="30"></label>
+        <button id="resetButton" class="text-button" type="button">Reset progress</button>
+      </div>
+    </header>
+
+    <section class="lesson" aria-live="polite">
+      <div class="progress-row"><span id="streak">0 day streak</span><span id="dueCount"></span></div>
+      <div class="progress-track"><span id="progressBar"></span></div>
+      <div id="card" class="card">
+        <div id="category" class="category">LOADING</div>
+        <div id="prompt" class="prompt">Woorden laden…</div>
+        <div id="answerArea"></div>
+        <div class="post-answer">
+          <button id="listenButton" class="listen" type="button" disabled>🔊 Beluister</button>
+          <div id="nextArea"></div>
+        </div>
+        <div id="feedback" class="feedback" role="status"></div>
+      </div>
+    </section>
+  </main>
+  <script src="lingo.js"></script>
+</body>
+</html>

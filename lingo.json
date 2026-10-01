@@ -1,0 +1,28 @@
+{
+  "languages": [
+    {
+      "id": "it",
+      "name": "Italian",
+      "nativeName": "Italiano",
+      "dutchName": "Italiaans",
+      "speech": "it-IT",
+      "pack": "lingo_it.json"
+    },
+    {
+      "id": "es",
+      "name": "Spanish",
+      "nativeName": "Español",
+      "dutchName": "Spaans",
+      "speech": "es-ES",
+      "pack": "lingo_es.json"
+    },
+    {
+      "id": "da",
+      "name": "Danish",
+      "nativeName": "Dansk",
+      "dutchName": "Deens",
+      "speech": "da-DK",
+      "pack": "lingo_da.json"
+    }
+  ]
+}

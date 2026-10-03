@@ -11,7 +11,7 @@ const packs = Object.fromEntries(config.languages.map(language => [
 const italianCategories = packs['lingo_it.json'].categories;
 const firstItalianCategory = italianCategories[0];
 
-test('Italian topics contain 20 to 50 words and 1120 unique entries after merging an identical phrase', () => {
+test('Italian topics contain 20 to 50 words and 1119 unique entries after merging identical phrases', () => {
   assert.equal(new Set(italianCategories.map(category => category.name)).size, italianCategories.length);
   const words = italianCategories.flatMap(category => {
     const entries = Object.entries(category.words);
@@ -19,7 +19,7 @@ test('Italian topics contain 20 to 50 words and 1120 unique entries after mergin
     assert.ok(entries.every(([word, translation]) => word && typeof translation === 'string' && translation));
     return entries.map(([word]) => word);
   });
-  assert.equal(words.length, 1120);
+  assert.equal(words.length, 1119);
   assert.equal(new Set(words).size, words.length);
 });
 
@@ -50,7 +50,7 @@ test('Spanish and Danish omit Italian specialties but keep everyday vocabulary',
   ];
   const italianTranslations = new Set(italianCategories.flatMap(category => Object.values(category.words)));
   assert.ok(specialties.every(translation => italianTranslations.has(translation)));
-  for (const [file, expectedCount] of [['lingo_es.json', 1102], ['lingo_da.json', 1100]]) {
+  for (const [file, expectedCount] of [['lingo_es.json', 1101], ['lingo_da.json', 1100]]) {
     const entries = packs[file].categories.flatMap(category => Object.entries(category.words));
     const translations = new Set(entries.map(([, translation]) => translation));
     assert.equal(entries.length, expectedCount);
@@ -75,9 +75,43 @@ test('vocabulary has unique Dutch answers, no book annotations, and distinct pol
   }
   assert.equal(firstItalianCategory.words.prego, 'alstublieft (geven)');
   assert.equal(firstItalianCategory.words['per favore'], 'alstublieft (vragen)');
-  assert.equal(firstItalianCategory.words['Sto bene'], 'Met mij gaat het goed');
+  assert.equal(firstItalianCategory.words['sto bene'], 'het gaat goed met me');
   assert.ok(italianCategories.some(category => Object.hasOwn(category.words, 'alto/-a')));
   assert.ok(italianCategories.some(category => Object.hasOwn(category.words, 'il biscotto')));
+});
+
+test('ordinary phrases are lowercase while names, acronyms, and necessary pronouns keep capitals', () => {
+  for (const [file, capitals] of [
+    ['lingo_it.json', []],
+    ['lingo_es.json', []],
+    ['lingo_da.json', ['De']]
+  ]) {
+    for (const [foreign, dutch] of Object.entries(packs[file].categories[0].words)) {
+      const ordinary = capitals.reduce((text, word) => text.replaceAll(word, word.toLowerCase()), foreign);
+      assert.equal(ordinary, ordinary.toLowerCase(), foreign);
+      assert.equal(dutch, dutch.toLowerCase(), dutch);
+    }
+  }
+  const italian = Object.fromEntries(italianCategories.flatMap(category => Object.entries(category.words)));
+  const spanish = Object.fromEntries(packs['lingo_es.json'].categories.flatMap(category => Object.entries(category.words)));
+  const danish = Object.fromEntries(packs['lingo_da.json'].categories.flatMap(category => Object.entries(category.words)));
+  assert.equal(italian.Italia, 'Italië');
+  assert.equal(italian['italiano/-a'], 'Italiaans');
+  assert.equal(italian.Lei, 'u');
+  assert.equal(italian.lei, 'zij (enkelvoud)');
+  assert.equal(italian["l'IVA"], 'btw');
+  assert.equal(italian['guardare la TV'], 'tv-kijken');
+  assert.equal(italian['navigare su internet'], 'surfen op internet');
+  assert.equal(italian['il paese'], 'land');
+  assert.equal(spanish.España, 'Spanje');
+  assert.equal(spanish.IVA, 'btw');
+  assert.equal(spanish.Navidad, 'Kerstmis');
+  assert.equal(danish.I, 'jullie');
+  assert.equal(danish.De, 'u');
+  assert.equal(danish.de, 'zij (meervoud)');
+  assert.equal(danish['i dag'], 'vandaag');
+  assert.equal(danish.Italien, 'Italië');
+  assert.equal(danish.parmesanost, 'Parmezaanse kaas');
 });
 
 class Element {
@@ -163,6 +197,25 @@ async function launch(values = {}, speech = true, options = {}) {
   };
   return app;
 }
+
+test('questions and choices display lowercase text or its required capitals in either direction', async () => {
+  for (const [foreign, dutch] of [
+    ['come sta?', 'hoe gaat het met u?'], ['Lei', 'u'], ['Italia', 'Italië'],
+    ["l'IVA", 'btw'], ['I', 'jullie'], ['De', 'u'], ['i dag', 'vandaag'], ['España', 'Spanje']
+  ]) {
+    for (const roll of [0, .75]) {
+      const words = roll === 0
+        ? { [foreign]: dutch, uno: 'een', due: 'twee', tre: 'drie' }
+        : { uno: 'een', due: 'twee', tre: 'drie', [foreign]: dutch };
+      const app = await launch({ 'lingo-settings': '{"mode":"choice"}' }, true, {
+        roll, packs: { ...packs, 'lingo_it.json': { categories: [{ name: 'Begroetingen', words }] } }
+      });
+      assert.equal(app.get('prompt').children[0].textContent, 'vertaal: ');
+      assert.equal(app.get('prompt').children[1].textContent, roll === 0 ? foreign : dutch);
+      assert.ok(app.get('answerArea').children.some(button => button.textContent === (roll === 0 ? dutch : foreign)));
+    }
+  }
+});
 
 test('new users start with one category; locked words are not used', async () => {
   const app = await launch({ 'lingo-settings': '{"mode":"choice"}' });
@@ -549,9 +602,12 @@ test('unlocking another category resumes a completed day; reset also resumes pra
 test('renamed words retain cooldown and progress in each language', async () => {
   const now = Date.now();
   for (const [language, oldId, id] of [
-    ['it', 'Begroetingen:stare*: Sto bene.', 'Begroetingen:Sto bene'],
+    ['it', 'Begroetingen:stare*: Sto bene.', 'Begroetingen:sto bene'],
+    ['it', 'Begroetingen:Sto bene', 'Begroetingen:sto bene'],
+    ['es', 'Begroetingen:Estoy bien', 'Begroetingen:estoy bien'],
     ['es', 'Begroetingen:por favor (para una solicitud)', 'Begroetingen:por favor'],
-    ['da', 'Begroetingen:Jeg har det godt.', 'Begroetingen:Jeg har det godt']
+    ['da', 'Begroetingen:Jeg har det godt.', 'Begroetingen:jeg har det godt'],
+    ['da', 'Begroetingen:Jeg har det godt', 'Begroetingen:jeg har det godt']
   ]) {
     const category = packs[`lingo_${language}.json`].categories[0];
     const progress = reviewedWords(category, now);

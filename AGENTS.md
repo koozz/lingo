@@ -29,7 +29,9 @@ When a request changes an earlier rule, use the newer rule.
 - Use a cogwheel in the top-right corner to open a settings popover.
   Include language selection, question types, and typing probability.
 - Write practice instructions in Dutch.
-  Show `Vertaal: ` followed by the word or phrase in italics.
+  Show `vertaal: ` followed by the word or phrase in italics.
+  Use lowercase questions and answers unless correct spelling requires a capital.
+  Keep required capitals in names, Dutch language names, acronyms, and pronouns.
 - Do not show a footer or the text `Elke vraag is in het Nederlands.`
   Show the selected language after `learn daily` in the header.
   Separate them with a middle dot and two spaces on each side.
@@ -56,7 +58,7 @@ When a request changes an earlier rule, use the newer rule.
 - Keep Italian words and their meanings when categories change.
   Do not carry Italian regional terms or specialties, such as Bruschetta, into the Spanish and Danish packs.
 - Remove course-book labels such as `hier:` and verb references before example sentences.
-  For example, change `stare*: Sto bene.` to `Sto bene`.
+  For example, change `stare*: Sto bene.` to `sto bene`.
   Keep articles and grammatical endings.
 - Keep Dutch answers unique across each complete language pack.
   Distinguish real meanings, such as singular and plural pronouns.

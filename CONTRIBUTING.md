@@ -23,5 +23,6 @@ Do not add Italian regional terms or specialties to other language packs.
 Keep Dutch answers unique within each pack, including case and punctuation variants.
 Remove course-book labels such as `hier:` and verb references before example sentences.
 Keep articles, grammatical endings, and labels that distinguish meanings.
+Use lowercase vocabulary unless a name, acronym, or language rule requires a capital.
 When you rename or merge an entry, add its old `category:word` ID to the pack's
 `aliases` object. Map it to the new ID so saved review progress is kept.

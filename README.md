@@ -6,6 +6,7 @@ To scratch my own itch.
 - Open it at [lingo.koozz.nl](https://lingo.koozz.nl).
 - Choose the language you want to learn.
 - Practice translations between the chosen language and Dutch.
+- Questions and answers use lowercase unless correct spelling requires a capital.
 - Progress and settings stay in browser local storage.
 - Each language starts with its first category unlocked.
 - A correct answer adds 1–9 XP, equal to the word's updated review level.

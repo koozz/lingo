@@ -129,7 +129,7 @@
     }
     current = { word: choose(dueWords), direction: Math.random() < .5 ? 'toDutch' : 'fromDutch' }; answered = false;
     ui.category.textContent = current.word.category;
-    ui.prompt.replaceChildren(document.createTextNode('Vertaal: '), Object.assign(document.createElement('em'), { textContent: cleanText(current.direction === 'toDutch' ? current.word.foreign : current.word.dutch) }));
+    ui.prompt.replaceChildren(document.createTextNode('vertaal: '), Object.assign(document.createElement('em'), { textContent: cleanText(current.direction === 'toDutch' ? current.word.foreign : current.word.dutch) }));
     ui.feedback.textContent = ''; ui.feedback.className = 'feedback'; ui.listen.disabled = current.direction !== 'toDutch' || !('speechSynthesis' in window); ui.next.replaceChildren();
     current.mode = chooseMode();
     renderInput(current.mode); updateMeta();

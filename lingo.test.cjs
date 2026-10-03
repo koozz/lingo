@@ -8,6 +8,57 @@ const config = JSON.parse(readFileSync(`${__dirname}/lingo.json`, 'utf8'));
 const packs = Object.fromEntries(config.languages.map(language => [
   language.pack, JSON.parse(readFileSync(`${__dirname}/${language.pack}`, 'utf8'))
 ]));
+const italianCategories = packs['lingo_it.json'].categories;
+const firstItalianCategory = italianCategories[0];
+
+test('Italian topics contain 20 to 50 words and keep all 1121 unique entries', () => {
+  assert.equal(new Set(italianCategories.map(category => category.name)).size, italianCategories.length);
+  const words = italianCategories.flatMap(category => {
+    const entries = Object.entries(category.words);
+    assert.ok(entries.length >= 20 && entries.length <= 50, category.name);
+    assert.ok(entries.every(([word, translation]) => word && typeof translation === 'string' && translation));
+    return entries.map(([word]) => word);
+  });
+  assert.equal(words.length, 1121);
+  assert.equal(new Set(words).size, words.length);
+});
+
+test('all packs share short Dutch topics in the same learning order', () => {
+  const names = italianCategories.map(category => category.name);
+  assert.equal(names.length, 41);
+  assert.ok(names.every(name => name.length <= 24));
+  assert.deepEqual(names.slice(0, 5), [
+    'Begroetingen', 'Voornaamwoorden', 'Basiswerkwoorden', 'Getallen 0-29', 'Familie'
+  ]);
+  for (const pack of Object.values(packs)) {
+    assert.deepEqual(pack.categories.map(category => category.name), names);
+    for (const category of pack.categories) {
+      const entries = Object.entries(category.words);
+      assert.ok(entries.length > 0 && entries.length <= 50, category.name);
+      assert.ok(entries.every(([word, translation]) => word && typeof translation === 'string' && translation));
+    }
+  }
+});
+
+test('Spanish and Danish omit Italian specialties but keep everyday vocabulary', () => {
+  const specialties = [
+    'op Siciliaanse wijze', 'uit/van Emilia-Romagna', 'Umbrisch', 'Venetiaans',
+    'sneetje geroosterd brood met knoflook, zout en olie', 'soort pasta',
+    'minestrone, groentesoep', 'de tiramisu', 'espresso met een scheut grappa of cognac',
+    'Italiaans koffieapparaat', 'op Florentijnse wijze', 'op de wijze van vissers',
+    'witte, zoete dessertwijn'
+  ];
+  const italianTranslations = new Set(italianCategories.flatMap(category => Object.values(category.words)));
+  assert.ok(specialties.every(translation => italianTranslations.has(translation)));
+  for (const [file, expectedCount] of [['lingo_es.json', 1103], ['lingo_da.json', 1102]]) {
+    const entries = packs[file].categories.flatMap(category => Object.entries(category.words));
+    const translations = new Set(entries.map(([, translation]) => translation));
+    assert.equal(entries.length, expectedCount);
+    assert.ok(specialties.every(translation => !translations.has(translation)), file);
+    assert.ok(['de pasta', 'kleine pizza', 'Parmezaanse kaas', 'espresso', 'Italië', 'Italiaans']
+      .every(translation => translations.has(translation)), file);
+  }
+});
 
 class Element {
   constructor(tag = 'div') {
@@ -92,11 +143,10 @@ async function launch(values = {}, speech = true) {
 test('new users start with one category; locked words are not used', async () => {
   const app = await launch({ 'lingo-settings': '{"mode":"choice"}' });
   assert.deepEqual(app.stored('lingo-unlocks-it'), { xp: 0, unlockedCategories: 1 });
-  const verbs = packs['lingo_it.json'].categories[0];
-  assert.equal(app.get('dueCount').textContent, `${Object.keys(verbs.words).length} te oefenen`);
+  assert.equal(app.get('dueCount').textContent, `${Object.keys(firstItalianCategory.words).length} te oefenen`);
   for (let index = 0; index < 20; index++) {
-    assert.equal(app.get('category').textContent, verbs.name);
-    assert.ok(app.get('answerArea').children.every(button => Object.values(verbs.words).includes(button.textContent)));
+    assert.equal(app.get('category').textContent, firstItalianCategory.name);
+    assert.ok(app.get('answerArea').children.every(button => Object.values(firstItalianCategory.words).includes(button.textContent)));
     app.answer(true);
     app.get('nextArea').children[0].click();
   }
@@ -113,7 +163,7 @@ test('XP uses the updated review level, preserves review intervals, and only awa
   assert.equal(app.stored('lingo-unlocks-it').xp, 1);
   assert.equal(app.get('nextArea').children.length, 1);
 
-  const progress = Object.fromEntries(Object.keys(packs['lingo_it.json'].categories[0].words).map(foreign => [`verbs:${foreign}`, { level: 8 }]));
+  const progress = Object.fromEntries(Object.keys(firstItalianCategory.words).map(foreign => [`${firstItalianCategory.name}:${foreign}`, { level: 8 }]));
   const advanced = await launch({ 'lingo-settings': '{"mode":"choice"}', 'lingo-progress-it': JSON.stringify(progress) });
   advanced.answer(true);
   assert.equal(advanced.stored('lingo-unlocks-it').xp, 9);
@@ -184,7 +234,7 @@ test('thresholds require explicit clicks in order and do not spend XP', async ()
   app.get('closeCategories').click();
   assert.equal(app.get('categoriesDialog').open, false);
   const restored = await launch(Object.fromEntries(app.storage));
-  assert.equal(restored.get('categoriesButton').textContent, 'Categorieën 4/25');
+  assert.equal(restored.get('categoriesButton').textContent, `Categorieën 4/${italianCategories.length}`);
 });
 
 test('unlock thresholds include the exact boundary', async () => {
@@ -201,17 +251,18 @@ test('unlock thresholds include the exact boundary', async () => {
 });
 
 test('progress stays separate per language; reset clears only the selected language', async () => {
+  const wordId = `${firstItalianCategory.name}:${Object.keys(firstItalianCategory.words)[0]}`;
   const app = await launch({
     'lingo-settings': '{"mode":"choice"}',
     'lingo-unlocks-it': '{"xp":200,"unlockedCategories":2}',
-    'lingo-progress-it': '{"verbs:abbinare":{"level":4}}'
+    'lingo-progress-it': JSON.stringify({ [wordId]: { level: 4 } })
   });
   await app.get('languageSelect').onchange({ target: { value: 'es' } });
   assert.deepEqual(app.stored('lingo-unlocks-es'), { xp: 0, unlockedCategories: 1 });
   app.answer(true);
   await app.get('languageSelect').onchange({ target: { value: 'it' } });
   assert.equal(app.get('xp').textContent, '200 XP');
-  assert.equal(app.stored('lingo-progress-it')['verbs:abbinare'].level, 4);
+  assert.equal(app.stored('lingo-progress-it')[wordId].level, 4);
   app.get('resetButton').click();
   assert.deepEqual(app.stored('lingo-unlocks-it'), { xp: 0, unlockedCategories: 1 });
   assert.deepEqual(app.stored('lingo-progress-it'), {});

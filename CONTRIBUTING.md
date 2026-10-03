@@ -13,3 +13,9 @@ The main contribution is a new language pack:
 7. Test the page in a browser.
 
 Keep changes small. Use clear names. Write documentation in simple English.
+
+For the Italian pack, use specific topics with 20 to 50 words per category.
+Use the same short Dutch category names and category order in all packs.
+Start with greetings and basic words. Put more complex topics later.
+Keep existing words and translations unchanged when you move them between categories.
+Do not add Italian regional terms or specialties to other language packs.

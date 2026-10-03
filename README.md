@@ -10,7 +10,7 @@ To scratch my own itch.
 - Each language starts with its first category unlocked.
 - A correct answer adds 1–9 XP, equal to the word's updated review level.
 - Open **Categorieën** to unlock categories in language-pack order.
-- The next categories require total XP of 100, 200, 300, and so on. Unlocks do not use up XP.
+- Unlock thresholds increase by 50 XP for categories 2-6, by 75 XP for categories 7-16, and by 100 XP from category 17. Unlocks do not use up XP.
 - XP and category unlocks stay in browser local storage for each language.
 - Existing word progress stays unchanged. The XP system starts at 0 XP.
 - **Reset progress** clears word progress, XP, and category unlocks for the selected language.

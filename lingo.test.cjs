@@ -210,7 +210,7 @@ test('typing awards XP and clears feedback on the next question', async () => {
 });
 
 test('thresholds require explicit clicks in order and do not spend XP', async () => {
-  const app = await launch({ 'lingo-unlocks-it': '{"xp":350,"unlockedCategories":1}' });
+  const app = await launch({ 'lingo-unlocks-it': '{"xp":175,"unlockedCategories":1}' });
   assert.equal(app.stored('lingo-unlocks-it').unlockedCategories, 1);
   app.get('categoriesButton').click();
   assert.equal(app.get('categoriesDialog').open, true);
@@ -218,11 +218,11 @@ test('thresholds require explicit clicks in order and do not spend XP', async ()
   assert.equal(skipped.disabled, true);
   skipped.onclick();
   assert.equal(app.stored('lingo-unlocks-it').unlockedCategories, 1);
-  for (const cost of [100, 200, 300]) {
+  for (const cost of [50, 100, 150]) {
     const button = app.get('categoryList').querySelector('button:not(:disabled)');
     assert.equal(button.textContent, `${cost} XP · Ontgrendel`);
     button.click();
-    assert.equal(app.stored('lingo-unlocks-it').xp, 350);
+    assert.equal(app.stored('lingo-unlocks-it').xp, 175);
   }
   assert.equal(app.stored('lingo-unlocks-it').unlockedCategories, 4);
   assert.equal(app.get('categoryList').querySelector('button:not(:disabled)'), null);
@@ -237,17 +237,62 @@ test('thresholds require explicit clicks in order and do not spend XP', async ()
   assert.equal(restored.get('categoriesButton').textContent, `Categorieën 4/${italianCategories.length}`);
 });
 
-test('unlock thresholds include the exact boundary', async () => {
-  for (const xp of [99, 100]) {
-    const app = await launch({ 'lingo-unlocks-it': JSON.stringify({ xp, unlockedCategories: 1 }) });
-    assert.equal(app.get('categoryList').children[1].children[1].disabled, xp < 100);
+test('all languages use cumulative 50, 75, and 100 XP tiers', async () => {
+  for (const language of config.languages) {
+    const app = await launch({ 'lingo-language': language.id });
+    const rows = app.get('categoryList').children;
+    assert.equal(rows[0].children[1].textContent, 'Ontgrendeld');
+    let total = 0;
+    for (let index = 1; index < rows.length; index++) {
+      const categoryNumber = index + 1;
+      total += categoryNumber <= 6 ? 50 : categoryNumber <= 16 ? 75 : 100;
+      assert.equal(rows[index].children[1].textContent, `${total} XP · Ontgrendel`);
+      assert.equal(rows[index].children[1].disabled, true);
+    }
   }
-  const app = await launch({ 'lingo-settings': '{"mode":"choice"}', 'lingo-unlocks-it': '{"xp":99,"unlockedCategories":1}' });
+});
+
+test('unlock thresholds include exact boundaries at tier transitions and later categories', async () => {
+  for (const [index, cost] of [[1, 50], [5, 250], [6, 325], [15, 1000], [16, 1100], [40, 3500]]) {
+    for (const xp of [cost - 1, cost]) {
+      const app = await launch({ 'lingo-unlocks-it': JSON.stringify({ xp, unlockedCategories: index }) });
+      assert.deepEqual(app.errors, []);
+      const row = app.get('categoryList').children[index];
+      const button = row.children[1];
+      assert.equal(button.textContent, `${cost} XP · Ontgrendel`);
+      assert.equal(button.disabled, xp < cost);
+      assert.equal(row.children[0].children[1].textContent, xp < cost ? 'Nog 1 XP nodig' : 'Klaar om te ontgrendelen');
+      button.onclick();
+      const unlockedCategories = xp < cost ? index : index + 1;
+      assert.deepEqual(app.stored('lingo-unlocks-it'), { xp, unlockedCategories });
+      const restored = await launch(Object.fromEntries(app.storage));
+      assert.deepEqual(restored.errors, []);
+      assert.deepEqual(restored.stored('lingo-unlocks-it'), { xp, unlockedCategories });
+    }
+  }
+});
+
+test('earning XP can reach the lower first unlock threshold', async () => {
+  const app = await launch({ 'lingo-settings': '{"mode":"choice"}', 'lingo-unlocks-it': '{"xp":49,"unlockedCategories":1}' });
   app.answer(true);
-  assert.equal(app.stored('lingo-unlocks-it').xp, 100);
+  assert.equal(app.stored('lingo-unlocks-it').xp, 50);
   assert.equal(app.stored('lingo-unlocks-it').unlockedCategories, 1);
   assert.equal(app.get('categoryList').children[1].children[1].disabled, false);
   assert.match(app.get('categoriesButton').textContent, /Ontgrendel/);
+});
+
+test('the lower thresholds preserve XP and previously unlocked categories', async () => {
+  for (const stored of [
+    { xp: 400, unlockedCategories: 5 },
+    { xp: 1400, unlockedCategories: 15 },
+    { xp: 4000, unlockedCategories: 41 }
+  ]) {
+    const app = await launch({ 'lingo-unlocks-it': JSON.stringify(stored) });
+    assert.deepEqual(app.errors, []);
+    assert.deepEqual(app.stored('lingo-unlocks-it'), stored);
+    assert.equal(app.get('xp').textContent, `${stored.xp} XP`);
+    assert.equal(app.get('categoryList').querySelector('button:not(:disabled)') !== null, stored.unlockedCategories < 41);
+  }
 });
 
 test('progress stays separate per language; reset clears only the selected language', async () => {
@@ -270,7 +315,11 @@ test('progress stays separate per language; reset clears only the selected langu
 });
 
 test('invalid saved XP is reported and cannot unlock categories', async () => {
-  for (const stored of ['null', '{', '{"xp":-1,"unlockedCategories":1}', '{"xp":0,"unlockedCategories":3}', '{"xp":"200","unlockedCategories":2}']) {
+  for (const stored of [
+    'null', '{', '{"xp":-1,"unlockedCategories":1}', '{"xp":0,"unlockedCategories":3}',
+    '{"xp":"200","unlockedCategories":2}', '{"xp":199,"unlockedCategories":5}',
+    '{"xp":999,"unlockedCategories":16}', '{"xp":1099,"unlockedCategories":17}'
+  ]) {
     const app = await launch({ 'lingo-unlocks-it': stored });
     assert.deepEqual(app.stored('lingo-unlocks-it'), { xp: 0, unlockedCategories: 1 });
     if (stored !== 'null') assert.ok(app.errors.length);

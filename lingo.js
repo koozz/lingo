@@ -12,7 +12,10 @@
   const progressKey = () => `${KEYS.progress}-${language.id}`;
   const unlocksKey = () => `${KEYS.unlocks}-${language.id}`;
   const availableWords = () => words.filter(word => categories.indexOf(word.category) < unlocks.unlockedCategories);
-  const categoryCost = index => index * 100;
+  const categoryCost = index =>
+    Math.min(index, 5) * 50 +
+    Math.min(Math.max(index - 5, 0), 10) * 75 +
+    Math.max(index - 15, 0) * 100;
   const choose = list => list[Math.floor(Math.random() * list.length)];
   const shuffle = list => list.sort(() => Math.random() - .5);
   const normalize = text => text.toLowerCase().replace(/[.,!?;:()[\]{}'"“”'’]/g, '').replace(/\s+/g, ' ').trim();

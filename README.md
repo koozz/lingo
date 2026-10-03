@@ -9,10 +9,15 @@ To scratch my own itch.
 - Progress and settings stay in browser local storage.
 - Each language starts with its first category unlocked.
 - A correct answer adds 1–9 XP, equal to the word's updated review level.
+- Correct words stay out of practice until their next review date. When no unlocked words are due, the page shows **Lekker bezig! Je bent klaar voor vandaag.**
+- **Answer accuracy** sets the minimum typing similarity. The default is 90%. Case and punctuation do not affect the score. The score is 100% minus the percentage of character edits. That percentage uses the longer answer length.
+- An accepted typo earns XP and shows **Bijna goed! Je schrijft het zo:** with the correct answer. At 100%, the normalized answer must match exactly.
+- Multiple-choice questions use four distinct answers without book annotations. Articles, grammatical endings, and meaning labels such as **(geven)** and **(vragen)** stay visible.
 - Open **Categorieën** to unlock categories in language-pack order.
 - Unlock thresholds increase by 50 XP for categories 2-6, by 75 XP for categories 7-16, and by 100 XP from category 17. Unlocks do not use up XP.
 - XP and category unlocks stay in browser local storage for each language.
 - Existing word progress stays unchanged. The XP system starts at 0 XP.
+- Renamed and merged vocabulary entries retain their saved review progress. For a merge, the latest review is kept.
 - **Reset progress** clears word progress, XP, and category unlocks for the selected language.
 
 The page uses plain HTML, CSS, and JavaScript. It runs on GitHub Pages. The service worker preloads the app shell and all language packs for offline use after the first visit.

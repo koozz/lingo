@@ -18,3 +18,10 @@ To scratch my own itch.
 The page uses plain HTML, CSS, and JavaScript. It runs on GitHub Pages. The service worker preloads the app shell and all language packs for offline use after the first visit.
 
 Run the interaction tests with `node --test lingo.test.cjs`. No packages are required.
+
+## License
+
+Copyright (c) 2026 Jan van den Berg (koozz).
+
+This project uses the [GNU Affero General Public License, version 3](LICENSE) (AGPL-3.0-only).
+The source code is available on [GitHub](https://github.com/koozz/lingo) and through the link in Settings.

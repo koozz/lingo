@@ -30,6 +30,7 @@
     </header>
 
     <section class="lesson" aria-live="polite">
+      <div class="xp-row"><span id="xp">0 XP</span><button id="categoriesButton" class="categories-button" type="button" aria-haspopup="dialog" aria-controls="categoriesDialog" disabled>Categorieën</button></div>
       <div class="progress-row"><span id="streak">0 day streak</span><span id="dueCount"></span></div>
       <div class="progress-track"><span id="progressBar"></span></div>
       <div id="card" class="card">
@@ -44,6 +45,11 @@
       </div>
     </section>
   </main>
+  <dialog id="categoriesDialog" class="categories-dialog" aria-labelledby="categoriesTitle">
+    <div class="dialog-header"><h2 id="categoriesTitle">Categorieën</h2><button id="closeCategories" class="icon-button" type="button" aria-label="Sluiten">×</button></div>
+    <p>Verdien XP met goede antwoorden. Ontgrendel categorieën op volgorde. Je behoudt je XP.</p>
+    <div id="categoryList"></div>
+  </dialog>
   <script src="lingo.js"></script>
 </body>
 </html>

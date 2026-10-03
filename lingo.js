@@ -1,15 +1,18 @@
 (() => {
   'use strict';
   const DAY = 86400000;
-  const KEYS = { language: 'lingo-language', progress: 'lingo-progress', settings: 'lingo-settings', streak: 'lingo-streak' };
+  const KEYS = { language: 'lingo-language', progress: 'lingo-progress', settings: 'lingo-settings', streak: 'lingo-streak', unlocks: 'lingo-unlocks' };
   const defaults = { mode: 'mixed', typingProbability: 30, frequencyLevel: 0 };
   const $ = id => document.getElementById(id);
   const ui = { prompt: $('prompt'), answers: $('answerArea'), next: $('nextArea'), feedback: $('feedback'), category: $('category'), due: $('dueCount'), progress: $('progressBar'), streak: $('streak'), listen: $('listenButton') };
-  let config, language, words = [], progress = {}, settings = { ...defaults }, current, answered = false;
+  let config, language, words = [], categories = [], progress = {}, unlocks = { xp: 0, unlockedCategories: 1 }, settings = { ...defaults }, current, answered = false;
 
-  const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; } };
+  const read = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (error) { console.error(`Cannot read ${key}`, error); return fallback; } };
   const save = (key, value) => localStorage.setItem(key, JSON.stringify(value));
   const progressKey = () => `${KEYS.progress}-${language.id}`;
+  const unlocksKey = () => `${KEYS.unlocks}-${language.id}`;
+  const availableWords = () => words.filter(word => categories.indexOf(word.category) < unlocks.unlockedCategories);
+  const categoryCost = index => index * 100;
   const choose = list => list[Math.floor(Math.random() * list.length)];
   const shuffle = list => list.sort(() => Math.random() - .5);
   const normalize = text => text.toLowerCase().replace(/[.,!?;:()[\]{}'"“”'’]/g, '').replace(/\s+/g, ' ').trim();
@@ -40,8 +43,9 @@
   }
   function renderInput(mode) {
     if (mode === 'choice') {
-      const same = words.filter(item => item.category === current.word.category && item.id !== current.word.id);
-      const other = words.filter(item => item.category !== current.word.category && item.id !== current.word.id);
+      const available = availableWords();
+      const same = available.filter(item => item.category === current.word.category && item.id !== current.word.id);
+      const other = available.filter(item => item.category !== current.word.category && item.id !== current.word.id);
       const usedAnswers = new Set([answerText(current)]);
       const wrong = [...shuffle(same), ...shuffle(other)].filter(item => {
         const text = answerText({ word: item });
@@ -64,10 +68,12 @@
     }
   }
   function check(correct, control) {
-    if (answered) { next(); return; } answered = true;
+    if (answered || !current) return;
+    answered = true;
     const record = progress[current.word.id] || { level: 0 };
     record.level = correct ? Math.min(9, Number(record.level) + 1) : Math.max(0, Number(record.level) - 1); record.reviewed = new Date().toISOString(); progress[current.word.id] = record; save(progressKey(), progress);
-    ui.feedback.textContent = correct ? `Goed! Volgende herhaling over ${daysForLevel(record.level)} dag${daysForLevel(record.level) === 1 ? '' : 'en'}.` : `Nog niet. Het juiste antwoord is: ${answerText(current)}.`;
+    if (correct) { unlocks.xp += record.level; save(unlocksKey(), unlocks); }
+    ui.feedback.textContent = correct ? `Goed! +${record.level} XP. Volgende herhaling over ${daysForLevel(record.level)} dag${daysForLevel(record.level) === 1 ? '' : 'en'}.` : `Nog niet. Het juiste antwoord is: ${answerText(current)}.`;
     ui.feedback.className = `feedback ${correct ? 'good' : 'bad'}`; control.classList.add(correct ? 'correct' : 'wrong');
     const correctButton = [...ui.answers.querySelectorAll('button')].find(button => button.textContent === answerText(current));
     if (correctButton) correctButton.classList.add('correct');
@@ -81,7 +87,9 @@
   }
   function next() { makeQuestion(); }
   function makeQuestion() {
-    const dueWords = words.filter(due); current = { word: choose(dueWords.length ? dueWords : words), direction: Math.random() < .5 ? 'toDutch' : 'fromDutch' }; answered = false;
+    const available = availableWords();
+    if (!available.length) return;
+    const dueWords = available.filter(due); current = { word: choose(dueWords.length ? dueWords : available), direction: Math.random() < .5 ? 'toDutch' : 'fromDutch' }; answered = false;
     ui.category.textContent = current.word.category;
     ui.prompt.replaceChildren(document.createTextNode('Vertaal: '), Object.assign(document.createElement('em'), { textContent: current.direction === 'toDutch' ? current.word.foreign : current.word.dutch }));
     ui.feedback.textContent = ''; ui.feedback.className = 'feedback'; ui.listen.disabled = current.direction !== 'toDutch' || !('speechSynthesis' in window); ui.next.replaceChildren();
@@ -90,11 +98,61 @@
     if (current.direction === 'toDutch') speak();
   }
   function updateMeta() {
-    const dueWords = words.filter(due).length; ui.due.textContent = `${dueWords} te oefenen`; ui.progress.style.width = `${Math.round((words.length - dueWords) / Math.max(1, words.length) * 100)}%`;
+    const available = availableWords();
+    const dueWords = available.filter(due).length; ui.due.textContent = `${dueWords} te oefenen`; ui.progress.style.width = `${Math.round((available.length - dueWords) / Math.max(1, available.length) * 100)}%`;
+    $('xp').textContent = `${unlocks.xp} XP`;
+    const eligible = unlocks.unlockedCategories < categories.length && unlocks.xp >= categoryCost(unlocks.unlockedCategories);
+    $('categoriesButton').textContent = `Categorieën ${unlocks.unlockedCategories}/${categories.length}${eligible ? ' · Ontgrendel' : ''}`;
+    $('categoriesButton').classList.toggle('eligible', eligible);
+    renderCategories();
+  }
+  function renderCategories() {
+    $('categoryList').replaceChildren(...categories.map((name, index) => {
+      const row = document.createElement('div'); row.className = 'category-row';
+      const label = document.createElement('span'); label.textContent = name;
+      if (index < unlocks.unlockedCategories) {
+        const status = document.createElement('span'); status.className = 'unlocked'; status.textContent = 'Ontgrendeld';
+        row.append(label, status);
+      } else {
+        const button = document.createElement('button'); button.type = 'button'; button.className = 'unlock-button';
+        const cost = categoryCost(index);
+        button.textContent = `${cost} XP · Ontgrendel`;
+        button.disabled = index !== unlocks.unlockedCategories || unlocks.xp < cost;
+        const hint = document.createElement('small');
+        hint.textContent = index !== unlocks.unlockedCategories ? `Eerst ${categories[index - 1]} ontgrendelen${unlocks.xp >= cost ? ' · Voldoende XP' : ''}` : unlocks.xp < cost ? `Nog ${cost - unlocks.xp} XP nodig` : 'Klaar om te ontgrendelen';
+        label.append(document.createElement('br'), hint);
+        button.onclick = () => {
+          if (index !== unlocks.unlockedCategories || unlocks.xp < cost) return;
+          unlocks.unlockedCategories += 1;
+          save(unlocksKey(), unlocks);
+          updateMeta();
+          $('categoryList').querySelector('button:not(:disabled)')?.focus();
+        };
+        row.append(label, button);
+      }
+      return row;
+    }));
   }
   async function loadPack() {
-    const response = await fetch(language.pack, { cache: 'no-store' }); if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json(); words = data.categories.flatMap(category => Object.entries(category.words).map(([foreign, dutch]) => ({ id: `${category.name}:${foreign}`, category: category.name, foreign, dutch })));
+    const loadingLanguage = language;
+    current = null; answered = true; words = []; categories = [];
+    ui.answers.replaceChildren(); ui.next.replaceChildren(); ui.listen.disabled = true;
+    ui.prompt.textContent = 'Woorden laden…'; ui.feedback.textContent = ''; $('categoriesButton').disabled = true;
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    const response = await fetch(loadingLanguage.pack, { cache: 'no-store' }); if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (language !== loadingLanguage) return;
+    if (!Array.isArray(data.categories) || !data.categories.length || data.categories.some(category => !Object.keys(category.words).length)) throw new Error('Het taalbestand bevat geen woorden.');
+    categories = data.categories.map(category => category.name);
+    words = data.categories.flatMap(category => Object.entries(category.words).map(([foreign, dutch]) => ({ id: `${category.name}:${foreign}`, category: category.name, foreign, dutch })));
+    const stored = read(unlocksKey(), { xp: 0, unlockedCategories: 1 });
+    if (!stored || !Number.isSafeInteger(stored.xp) || stored.xp < 0 || !Number.isSafeInteger(stored.unlockedCategories) || stored.unlockedCategories < 1 || stored.xp < categoryCost(stored.unlockedCategories - 1)) {
+      console.error(`Invalid category progress in ${unlocksKey()}`);
+      unlocks = { xp: 0, unlockedCategories: 1 };
+    } else {
+      unlocks = { xp: stored.xp, unlockedCategories: Math.min(categories.length, stored.unlockedCategories) };
+    }
+    save(unlocksKey(), unlocks); $('categoriesButton').disabled = false;
     $('languageLabel').textContent = language.nativeName; makeQuestion();
   }
   function applySettings() {
@@ -105,12 +163,15 @@
     progress = read(progressKey(), {}); settings = { ...defaults, ...read(KEYS.settings, {}) }; $('languageSelect').replaceChildren(...config.languages.map(item => new Option(`${item.nativeName} · ${item.name}`, item.id))); $('languageSelect').value = language.id; applySettings(); await loadPack();
   }
   $('settingsButton').onclick = () => { const open = $('settings').hidden; $('settings').hidden = !open; $('settingsButton').setAttribute('aria-expanded', open); };
-  $('languageSelect').onchange = async event => { language = config.languages.find(item => item.id === event.target.value); localStorage.setItem(KEYS.language, language.id); progress = read(progressKey(), {}); await loadPack(); };
+  const showError = error => { ui.prompt.textContent = 'Kan de taal niet laden.'; ui.feedback.textContent = error.message; ui.feedback.className = 'feedback bad'; };
+  $('languageSelect').onchange = async event => { language = config.languages.find(item => item.id === event.target.value); localStorage.setItem(KEYS.language, language.id); progress = read(progressKey(), {}); try { await loadPack(); } catch (error) { showError(error); } };
   $('questionMode').onchange = event => { settings.mode = event.target.value; save(KEYS.settings, settings); makeQuestion(); };
   $('typingProbability').oninput = event => { settings.typingProbability = Number(event.target.value); $('typingValue').textContent = `${settings.typingProbability}%`; save(KEYS.settings, settings); };
-  $('resetButton').onclick = () => { if (confirm('Alle voortgang wissen?')) { progress = {}; save(progressKey(), progress); makeQuestion(); } };
+  $('resetButton').onclick = () => { if (confirm('Alle voortgang voor deze taal wissen, inclusief XP en categorieën?')) { progress = {}; unlocks = { xp: 0, unlockedCategories: 1 }; save(progressKey(), progress); save(unlocksKey(), unlocks); makeQuestion(); } };
+  $('categoriesButton').onclick = () => $('categoriesDialog').showModal();
+  $('closeCategories').onclick = () => $('categoriesDialog').close();
   ui.listen.onclick = speak;
   $('streak').textContent = `${read(KEYS.streak, 0)} day streak`;
-  start().catch(error => { ui.prompt.textContent = 'Kan de taal niet laden.'; ui.feedback.textContent = error.message; ui.feedback.className = 'feedback bad'; });
+  start().catch(showError);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();

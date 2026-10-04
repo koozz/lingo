@@ -1,4 +1,4 @@
-const CACHE = 'lingo-v8';
+const CACHE = 'lingo-v9';
 const FILES = [
   './',
   './index.html',

@@ -10,7 +10,7 @@ To scratch my own itch.
 - Progress and settings stay in browser local storage.
 - Each language starts with its first category unlocked.
 - A correct answer adds 1–9 XP, equal to the word's updated review level.
-- Correct words stay out of practice until their next review date. When no unlocked words are due, the page shows **Lekker bezig! Je bent klaar voor vandaag.**
+- Correct words return after 1, 2, 4, 8, 16, 32, 64, 128, or 256 local calendar days, based on their review level. The time of the answer does not affect the due date. When no unlocked words are due, the page shows **Lekker bezig! Je bent klaar voor vandaag.**
 - **Answer accuracy** sets the minimum typing similarity. The default is 90%. Case and punctuation do not affect the score. The score is 100% minus the percentage of character edits. That percentage uses the longer answer length.
 - An accepted typo earns XP and shows **Bijna goed! Je schrijft het zo:** with the correct answer. At 100%, the normalized answer must match exactly.
 - Multiple-choice questions use four distinct answers without book annotations. Articles, grammatical endings, and meaning labels such as **(geven)** and **(vragen)** stay visible.

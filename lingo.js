@@ -20,8 +20,9 @@
   const shuffle = list => list.sort(() => Math.random() - .5);
   const cleanText = text => text.replace(/^[^;:]+:\s*/, '').replace(/\*/g, '').replace(/\s*\[\d+\]\s*$/, '').replace(/([^.])\.$/, '$1').trim();
   const normalize = text => text.normalize('NFC').toLowerCase().replace(/[.,!?;:()[\]{}'"“”'’]/g, '').replace(/\s+/g, ' ').trim();
-  const daysForLevel = level => Math.min(365, [0, 1, 2, 4, 7, 14, 30, 60, 120, 240][Math.min(9, Math.max(0, level))]);
-  const due = word => !progress[word.id]?.reviewed || progress[word.id].correct === false || Date.now() >= Date.parse(progress[word.id].reviewed) + daysForLevel(progress[word.id].level) * DAY;
+  const daysForLevel = level => level <= 0 ? 0 : 2 ** (Math.min(9, level) - 1);
+  const calendarDay = date => Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY;
+  const due = word => !progress[word.id]?.reviewed || progress[word.id].correct === false || calendarDay(new Date()) >= calendarDay(new Date(progress[word.id].reviewed)) + daysForLevel(progress[word.id].level);
   const answerText = item => cleanText(current.direction === 'toDutch' ? item.word.dutch : item.word.foreign);
   const spoken = word => {
     return cleanText(word.foreign).split('/')[0].trim();

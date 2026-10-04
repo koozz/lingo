@@ -244,7 +244,7 @@ test('XP uses the updated review level, preserves review intervals, and only awa
   const advanced = await launch({ 'lingo-settings': '{"mode":"choice"}', 'lingo-progress-it': JSON.stringify(progress) });
   advanced.answer(true);
   assert.equal(advanced.stored('lingo-unlocks-it').xp, 9);
-  assert.match(advanced.get('feedback').textContent, /240 dagen/);
+  assert.match(advanced.get('feedback').textContent, /256 dagen/);
   const capped = await launch({
     'lingo-settings': '{"mode":"choice"}',
     'lingo-progress-it': JSON.stringify(Object.fromEntries(Object.entries(progress).map(([id]) => [id, { level: 9 }])))
@@ -537,7 +537,7 @@ const reviewedWords = (category, now, level = 1) => Object.fromEntries(Object.ke
 ]));
 
 test('correct words stay on cooldown, and finishing all open words completes the day', async () => {
-  const now = Date.now();
+  const now = new Date(2026, 9, 3, 23, 59).getTime();
   const app = await launch({ 'lingo-settings': '{"mode":"choice"}' }, true, { now });
   const seen = new Set();
   const total = Object.keys(firstItalianCategory.words).length;
@@ -556,7 +556,7 @@ test('correct words stay on cooldown, and finishing all open words completes the
   assert.equal(app.get('progressBar').style.width, '100%');
   const restored = await launch(Object.fromEntries(app.storage), true, { now });
   assert.equal(restored.get('prompt').textContent, app.get('prompt').textContent);
-  restored.now += DAY - 1;
+  restored.now = new Date(2026, 9, 3, 23, 59, 59, 999).getTime();
   restored.get('questionMode').onchange({ target: { value: 'choice' } });
   assert.equal(restored.get('prompt').textContent, app.get('prompt').textContent);
   restored.now += 1;
@@ -565,11 +565,48 @@ test('correct words stay on cooldown, and finishing all open words completes the
   assert.equal(restored.get('answerArea').children.length, 4);
 });
 
+test('reviews use local calendar dates and double the interval at each level', async () => {
+  for (const level of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+    const interval = 2 ** (level - 1);
+    const reviewed = new Date(2026, 0, 31, 23, 59);
+    const dueDate = new Date(2026, 0, 31 + interval);
+    const values = {
+      'lingo-settings': '{"mode":"choice"}',
+      'lingo-progress-it': JSON.stringify(reviewedWords(firstItalianCategory, reviewed.getTime(), level))
+    };
+    const app = await launch(values, true, { now: dueDate.getTime() - 1 });
+    assert.equal(app.get('prompt').textContent, 'Lekker bezig! Je bent klaar voor vandaag.', `level ${level} before midnight`);
+    app.now += 1;
+    app.get('questionMode').onchange({ target: { value: 'choice' } });
+    assert.equal(app.get('dueCount').textContent, `${Object.keys(firstItalianCategory.words).length} te oefenen`, `level ${level} at midnight`);
+    const word = app.word();
+    app.answer(true);
+    const updatedLevel = Math.min(9, level + 1);
+    assert.equal(app.stored('lingo-progress-it')[word.id].level, updatedLevel);
+    assert.match(app.get('feedback').textContent, new RegExp(`${2 ** (updatedLevel - 1)} dagen`));
+  }
+});
+
+test('calendar cooldowns cross daylight-saving changes without a 24-hour wait', async () => {
+  for (const [month, day] of [[2, 28], [9, 24]]) {
+    const reviewed = new Date(2026, month, day, 23, 59);
+    const dueDate = new Date(2026, month, day + 2);
+    const app = await launch({
+      'lingo-settings': '{"mode":"choice"}',
+      'lingo-progress-it': JSON.stringify(reviewedWords(firstItalianCategory, reviewed.getTime(), 2))
+    }, true, { now: dueDate.getTime() - 1 });
+    assert.equal(app.get('prompt').textContent, 'Lekker bezig! Je bent klaar voor vandaag.');
+    app.now += 1;
+    app.get('questionMode').onchange({ target: { value: 'choice' } });
+    assert.equal(app.get('answerArea').children.length, 4);
+  }
+});
+
 test('incorrect reviews remain open, even at a high review level', async () => {
   const now = Date.now();
   const progress = reviewedWords(firstItalianCategory, now);
   const wordId = Object.keys(progress)[0];
-  progress[wordId] = { level: 8, reviewed: new Date(now - 121 * DAY).toISOString(), correct: true };
+  progress[wordId] = { level: 8, reviewed: new Date(now - 129 * DAY).toISOString(), correct: true };
   const app = await launch({
     'lingo-settings': '{"mode":"choice"}', 'lingo-progress-it': JSON.stringify(progress)
   }, true, { now });
